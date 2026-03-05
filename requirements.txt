@@ -1,0 +1,5 @@
+language_translator/
+│
+├── app.py
+└── templates/
+      └── index.html

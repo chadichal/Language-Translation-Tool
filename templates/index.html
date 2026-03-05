@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Language Translator</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: linear-gradient(135deg, #4e73df, #1cc88a);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            width: 600px;
+            border-radius: 10px;
+            box-shadow: 0px 5px 15px rgba(0,0,0,0.3);
+        }
+
+        h2 {
+            text-align: center;
+            color: #4e73df;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            resize: none;
+        }
+
+        select {
+            width: 48%;
+            padding: 8px;
+            margin-top: 10px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 15px;
+            background: #4e73df;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #2e59d9;
+        }
+
+        .output-box {
+            margin-top: 15px;
+        }
+
+        .action-buttons {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .small-btn {
+            width: 48%;
+            background: #1cc88a;
+        }
+
+        /* spinner animation */
+        .spinner {
+            border: 4px solid rgba(0,0,0,0.1);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border-left-color: #4e73df;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* simple fade in/out for translation checkmark */
+        .fade {
+            animation: fadeout 1.5s forwards;
+            font-size: 1.2em;
+            margin-top: 5px;
+            color: #1cc88a;
+        }
+
+        @keyframes fadeout {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🌍 AI Language Translator</h2>
+
+    <textarea id="inputText" placeholder="Enter text here..."></textarea>
+    <div id="prediction" style="color:#888; font-size:0.9em; margin-top:4px;"></div>
+
+    <div style="display:flex; justify-content: space-between;">
+        <select id="sourceLang">
+    <option value="auto">Auto Detect</option>
+    <option value="en">English</option>
+    <option value="hi">Hindi</option>
+    <option value="fr">French</option>
+    <option value="es">Spanish</option>
+    <option value="de">German</option>
+    <option value="kn">Kannada</option>
+    <option value="te">Telugu</option>
+    <option value="zh">Chinese</option>
+    <option value="ru">Russian</option>
+    <option value="ko">Korean</option>
+    <!-- …add more valid codes as needed… -->
+</select>
+
+        <select id="targetLang">
+            <option value="hi">Hindi</option>
+            <option value="en">English</option>
+            <option value="fr">French</option>
+            <option value="es">Spanish</option>
+            <option value="de">German</option>
+            <option value="kn">Kannada</option>
+            <option value="te">Telugu</option>
+            <option value="zh">Chinese</option>
+            <option value="ru">Russian</option>
+            <option value="ko">Korean</option>
+            <!-- …add more valid codes as needed… -->
+        </select>
+    </div>
+
+    <button id="translateBtn" onclick="translateText()">Translate</button>
+    <button id="talkBtn" onclick="recordAndTranslate()" style="margin-top:5px; background:#1cc88a;">🎤 Talk</button>
+    <div id="spinner" class="spinner" style="display:none;"></div>
+
+    <div class="output-box">
+        <textarea id="outputText" placeholder="Translated text..." readonly></textarea>
+        <div id="animation" class="fade" style="display:none;">✔️</div>
+    </div>
+
+    <div class="action-buttons">
+        <button class="small-btn" onclick="copyText()">Copy</button>
+        <button class="small-btn" onclick="speakText()">🔊 Speak</button>
+    </div>
+
+</div>
+
+<script>
+// simple predictive text using a small word list
+const wordList = ["hello","world","how","are","you","this","is","an","example","language","translator","flask","python","javascript"];
+function updatePrediction() {
+    const text = document.getElementById("inputText").value;
+    const parts = text.split(/\s+/);
+    const last = parts[parts.length-1].toLowerCase();
+    let suggestion = "";
+    if (last) {
+        for (const w of wordList) {
+            if (w.startsWith(last) && w !== last) {
+                suggestion = w;
+                break;
+            }
+        }
+    }
+    document.getElementById("prediction").textContent = suggestion ? `Did you mean: ${suggestion}?` : "";
+}
+
+document.getElementById("inputText").addEventListener("input", updatePrediction);
+
+async function translateText() {
+    const text = document.getElementById("inputText").value;
+    const source = document.getElementById("sourceLang").value.toLowerCase();
+    const target = document.getElementById("targetLang").value.toLowerCase();
+
+    // show spinner while waiting
+    document.getElementById("spinner").style.display = "inline-block";
+    document.getElementById("animation").style.display = "none";
+
+    const response = await fetch("/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, source, target })
+    });
+
+    const data = await response.json();
+
+    document.getElementById("spinner").style.display = "none";
+    if (data.success) {
+        document.getElementById("outputText").value = data.translated_text;
+        // trigger checkmark animation
+        const anim = document.getElementById("animation");
+        anim.style.display = "block";
+        // remove after animation ends
+        setTimeout(() => { anim.style.display = "none"; }, 1500);
+    } else {
+        alert("Error: " + data.error);
+    }
+}
+
+async function recordAndTranslate() {
+    // browser speech recognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert('Speech recognition not supported in this browser.');
+        return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = document.getElementById('sourceLang').value;
+    recognition.interimResults = false;
+    recognition.onresult = async (event) => {
+        const spokenText = event.results[0][0].transcript;
+        document.getElementById('inputText').value = spokenText;
+        updatePrediction();
+        // translate and then play audio
+        await translateText();
+        const target = document.getElementById('targetLang').value.toLowerCase();
+        const out = document.getElementById('outputText').value;
+        if (out) {
+            const resp = await fetch('/speak', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: out, lang: target })
+            });
+            const data = await resp.json();
+            if (data.success) { new Audio(data.audio).play(); }
+        }
+    };
+    recognition.start();
+}
+
+function copyText() {
+    const output = document.getElementById("outputText");
+    output.select();
+    document.execCommand("copy");
+    alert("Copied to clipboard!");
+}
+
+async function speakText() {
+    const text = document.getElementById("outputText").value;
+    const lang = document.getElementById("targetLang").value;
+
+    const response = await fetch("/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, lang })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+        const audio = new Audio(data.audio);
+        audio.play();
+    } else {
+        alert("Error in speech: " + data.error);
+    }
+}
+</script>
+
+</body>
+</html>
